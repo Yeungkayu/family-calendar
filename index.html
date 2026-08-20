@@ -1,111 +1,65 @@
 <!DOCTYPE html>
-<html lang="zh‑HK">
+<html lang="zh-TW">
 <head>
-<meta charset="UTF‑8">
-<title>家庭行事曆</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial‑scale=1.0">
+<title>家庭日程</title>
 <style>
-*{box‑sizing:border‑box;font‑family:system‑ui}
-body{max‑width:900px;margin:20px auto;padding:0 16px}
-.box{border:1px solid #ccc;padding:14px;border‑radius:8px;margin‑bottom:12px}
-input,textarea{width:100%;padding:8px;margin:6px 0;border:1px solid #aaa;border‑radius:4px}
-button{padding:8px 14px;margin:4px;background:#2563eb;color:white;border:none;border‑radius:6px;cursor:pointer}
-.del{background:#dc2626}
-.item{padding:10px;border‑bottom:1px solid #eee}
+body{font-family:system-ui, sans-serif;max‑width:600px;margin:20px auto;padding:0 16px;}
+.box{margin:16px 0;}
+input{width:100%;padding:10px;margin:6px 0;box‑sizing:border‑box;font‑size:16px;}
+button{padding:10px 18px;font‑size:16px;margin:4px;background:#2563eb;color:white;border:none;border‑radius:4px;cursor:pointer;}
+.item{padding:10px;background:#f3f4f6;margin:8px 0;border‑radius:4px;display:flex;justify‑content:space‑between;align‑items:center;}
+.del{background:#dc2626;}
 </style>
 </head>
 <body>
-<h1>家庭行事曆</h1>
+<h1>新增日程</h1>
 <div class="box">
-  <h3>登入 / 註冊</h3>
-  <input id="email" placeholder="電郵">
-  <input id="pwd" type="password" placeholder="密碼">
-  <button onclick="signUp()">註冊</button>
-  <button onclick="signIn()">登入</button>
-  <button onclick="signOut()">登出</button>
-  <div id="userInfo"></div>
+<input id="title" placeholder="標題">
+<input id="date" placeholder="日期">
+<input id="note" placeholder="備註">
+<button onclick="saveItem()">儲存日程</button>
 </div>
 
-<div class="box">
-  <h3>新增日程</h3>
-  <input id="title" placeholder="標題">
-  <textarea id="desc" placeholder="備註"></textarea>
-  <input id="evTime" type="datetime‑local">
-  <button onclick="addEvent()">儲存日程</button>
-</div>
+<h2>我的日程</h2>
+<div id="list"></div>
 
-<div class="box">
-  <h3>我的日程</h3>
-  <div id="list"></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ========= 這裡改為你自己嘅參數 =========
-const SUPABASE_URL = "https://rnqscrjbrftupkospvfu.supabase.co";
-const SUPABASE_ANON_KEY = "在此雙引號內貼你的 sb_publishable_ 開頭嘅密鑰";
-// =========================================
+let arr=JSON.parse(localStorage.getItem("schedule"))||[];
 
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-async function showUser(){
-  const {data:{user}} = await supabase.auth.getUser();
-  document.getElementById("userInfo").innerText = user ? "已登入："+user.email : "未登入";
-  render();
-}
-
-async function signUp(){
-  const email = document.getElementById("email").value;
-  const pwd = document.getElementById("pwd").value;
-  await supabase.auth.signUp({email,password:pwd});
-  showUser();
-}
-async function signIn(){
-  const email = document.getElementById("email").value;
-  const pwd = document.getElementById("pwd").value;
-  await supabase.auth.signInWithPassword({email,password:pwd});
-  showUser();
-}
-async function signOut(){
-  await supabase.auth.signOut();
-  showUser();
-}
-
-async function addEvent(){
-  const title = document.getElementById("title").value;
-  const description = document.getElementById("desc").value;
-  const event_time = document.getElementById("evTime").value;
-  if(!title||!event_time)return alert("請填寫標題同時間");
-  await supabase.from("calendar_events").insert({title,description,event_time});
-  document.getElementById("title").value="";
-  document.getElementById("desc").value="";
-  document.getElementById("evTime").value="";
-  render();
-}
-
-async function render(){
-  const {data,error} = await supabase.from("calendar_events").select("*").order("event_time",{asc:true});
-  const dom = document.getElementById("list");
-  dom.innerHTML="";
-  if(!data||data.length===0){dom.innerText="暫無日程";return;}
-  data.forEach(it=>{
-    const div = document.createElement("div");
-    div.className="item";
-    div.innerHTML = `
-      <div><b>${it.title}</b></div>
-      <div>${it.event_time}</div>
-      <div>${it.description||""}</div>
-      <button class="del" onclick="del('${it.id}')">刪除</button>
-    `;
-    dom.appendChild(div);
+function render(){
+  const div=document.getElementById("list");
+  div.innerHTML="";
+  arr.forEach((it,i)=>{
+    const d=document.createElement("div");
+    d.className="item";
+    d.innerHTML=`<div><b>${it.title}</b>｜${it.date}<br>${it.note||""}</div>
+    <button class="del" onclick="del(${i})">刪除</button>`;
+    div.appendChild(d);
   })
 }
 
-window.del = async function(id){
-  await supabase.from("calendar_events").delete().eq("id",id);
+function saveItem(){
+  const title=document.getElementById("title").value.trim();
+  const date=document.getElementById("date").value.trim();
+  const note=document.getElementById("note").value.trim();
+  if(!title){alert("請輸入標題");return;}
+  arr.push({title,date,note});
+  localStorage.setItem("schedule",JSON.stringify(arr));
+  document.getElementById("title").value="";
+  document.getElementById("date").value="";
+  document.getElementById("note").value="";
   render();
 }
-showUser();
+
+function del(idx){
+  arr.splice(idx,1);
+  localStorage.setItem("schedule",JSON.stringify(arr));
+  render();
+}
+
+render();
 </script>
 </body>
 </html>
